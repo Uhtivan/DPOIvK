@@ -1,7 +1,5 @@
 from __future__ import annotations
-
 import pandas as pd
-
 from eda_cli.core import (
     compute_quality_flags,
     correlation_matrix,
@@ -9,6 +7,7 @@ from eda_cli.core import (
     missing_table,
     summarize_dataset,
     top_categories,
+    DatasetSummary,
 )
 
 
@@ -45,7 +44,7 @@ def test_missing_table_and_quality_flags():
     assert missing_df.loc["age", "missing_count"] == 1
 
     summary = summarize_dataset(df)
-    flags = compute_quality_flags(summary, missing_df)
+    flags = compute_quality_flags(df, missing_df)  # Передаем df
     assert 0.0 <= flags["quality_score"] <= 1.0
 
 
@@ -73,10 +72,10 @@ def _sample_df_with_constant_column() -> pd.DataFrame:
 
 def test_has_constant_columns():
     df = _sample_df_with_constant_column()  # Создаем DataFrame с константной колонкой
-    summary = DatasetSummary(df)  # Получаем сводку по данным
+    summary = summarize_dataset(df)  # Получаем сводку по данным
     missing_df = missing_table(df)  # Создаем таблицу пропусков (не используется в этой проверке)
 
-    flags = compute_quality_flags(summary, missing_df)  # Получаем флаги качества данных
+    flags = compute_quality_flags(df, missing_df)  # Передаем df
     assert flags["has_constant_columns"] == True  # Проверяем, что флаг установился в True для константной колонки
 
 
@@ -91,12 +90,11 @@ def _sample_df_with_high_cardinality() -> pd.DataFrame:
 
 def test_has_high_cardinality_categoricals():
     df = _sample_df_with_high_cardinality()  # Создаем DataFrame с категорией с большим количеством уникальных значений
-    summary = DatasetSummary(df)  # Получаем сводку по данным
+    summary = summarize_dataset(df)  # Получаем сводку по данным
     missing_df = missing_table(df)  # Создаем таблицу пропусков (не используется в этой проверке)
 
-    flags = compute_quality_flags(summary, missing_df)  # Получаем флаги качества данных
-    assert flags[
-               "has_high_cardinality_categoricals"] == True  # Проверяем, что флаг установился в True для высокой кардинальности
+    flags = compute_quality_flags(df, missing_df)  # Передаем df
+    assert flags["has_high_cardinality"] == True  # Проверяем, что флаг установился в True для высокой кардинальности
 
 
 # Пример DataFrame с дублирующимися идентификаторами
@@ -110,9 +108,8 @@ def _sample_df_with_duplicates() -> pd.DataFrame:
 
 def test_has_suspicious_id_duplicates():
     df = _sample_df_with_duplicates()  # Создаем DataFrame с дублирующимися идентификаторами
-    summary = DatasetSummary(df)  # Получаем сводку по данным
+    summary = summarize_dataset(df)  # Получаем сводку по данным
     missing_df = missing_table(df)  # Создаем таблицу пропусков (не используется в этой проверке)
 
-    flags = compute_quality_flags(summary, missing_df)  # Получаем флаги качества данных
-    assert flags[
-               "has_suspicious_id_duplicates"] == True  # Проверяем, что флаг установился в True для дублирующихся идентификаторов
+    flags = compute_quality_flags(df, missing_df)  # Передаем df
+    assert flags["has_suspicious_id_duplicates"] == True  # Проверяем, что флаг установился в True для дублирующихся идентификаторов

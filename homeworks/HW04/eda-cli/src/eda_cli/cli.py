@@ -4,13 +4,14 @@ from typing import Optional
 import pandas as pd
 import typer
 from .core import (
-    DatasetSummary,
     compute_quality_flags,
     correlation_matrix,
     flatten_summary_for_print,
     missing_table,
     summarize_dataset,
     top_categories,
+    DatasetSummary,
+    ColumnSummary,
 )
 from .viz import (
     plot_correlation_heatmap,
@@ -21,6 +22,7 @@ from .viz import (
 
 app = typer.Typer(help="Мини-CLI для EDA CSV-файлов")
 
+
 def _load_csv(
     path: Path,
     sep: str = ",",
@@ -30,20 +32,9 @@ def _load_csv(
         raise typer.BadParameter(f"Файл '{path}' не найден")
     try:
         return pd.read_csv(path, sep=sep, encoding=encoding)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         raise typer.BadParameter(f"Не удалось прочитать CSV: {exc}") from exc
 
-# Функция, которая теперь принимает df для работы с данными
-def flatten_summary_for_print(df: pd.DataFrame, summary: DatasetSummary) -> pd.DataFrame:
-    rows = []
-    for col in summary.columns:
-        rows.append({
-            "name": col,
-            "dtype": df[col].dtype,
-            "non_null": df[col].notnull().sum(),
-            "missing": df[col].isnull().sum(),
-        })
-    return pd.DataFrame(rows)
 
 @app.command()
 def overview(
@@ -58,17 +49,33 @@ def overview(
     - простая табличка по колонкам.
     """
     df = _load_csv(Path(path), sep=sep, encoding=encoding)
-    n_cols = len(df.columns)
-    columns = df.columns.tolist()
+
+    # Создаем объект DatasetSummary с нужными параметрами
+    n_cols = len(df.columns)  # Количество столбцов
+    columns = [
+        ColumnSummary(
+            name=col,
+            dtype=str(df[col].dtype),
+            non_null=df[col].notna().sum(),
+            missing=df[col].isna().sum(),
+            missing_share=df[col].isna().mean(),
+            unique=df[col].nunique(),
+            example_values=df[col].dropna().head(3).tolist(),
+            is_numeric=pd.api.types.is_numeric_dtype(df[col]),
+        )
+        for col in df.columns
+    ]
+
     summary = DatasetSummary(n_rows=len(df), n_cols=n_cols, columns=columns)
 
-    # Передаем df в flatten_summary_for_print
-    summary_df = flatten_summary_for_print(df, summary)
+    # Передаем объект summary в flatten_summary_for_print
+    summary_df = flatten_summary_for_print(summary)
 
     typer.echo(f"Строк: {summary.n_rows}")
     typer.echo(f"Столбцов: {summary.n_cols}")
     typer.echo("\nКолонки:")
     typer.echo(summary_df.to_string(index=False))
+
 
 @app.command()
 def report(
@@ -90,13 +97,26 @@ def report(
     # Загрузка CSV-файла
     df = _load_csv(Path(path), sep=sep, encoding=encoding)
 
+    # Создаем объект DatasetSummary с нужными параметрами
     n_cols = len(df.columns)  # Количество столбцов
-    columns = df.columns.tolist()  # Список столбцов
+    columns = [
+        ColumnSummary(
+            name=col,
+            dtype=str(df[col].dtype),
+            non_null=df[col].notna().sum(),
+            missing=df[col].isna().sum(),
+            missing_share=df[col].isna().mean(),
+            unique=df[col].nunique(),
+            example_values=df[col].dropna().head(3).tolist(),
+            is_numeric=pd.api.types.is_numeric_dtype(df[col]),
+        )
+        for col in df.columns
+    ]
 
     summary = DatasetSummary(n_rows=len(df), n_cols=n_cols, columns=columns)
 
     # Обзор
-    summary_df = flatten_summary_for_print(df, summary)
+    summary_df = flatten_summary_for_print(summary)
     missing_df = missing_table(df)
     corr_df = correlation_matrix(df)
     top_cats = top_categories(df)
@@ -158,6 +178,7 @@ def report(
     typer.echo(f"- Основной markdown: {md_path}")
     typer.echo("- Табличные файлы: summary.csv, missing.csv, correlation.csv, top_categories/*.csv")
     typer.echo("- Графики: hist_*.png, missing_matrix.png, correlation_heatmap.png")
+
 
 if __name__ == "__main__":
     app()
