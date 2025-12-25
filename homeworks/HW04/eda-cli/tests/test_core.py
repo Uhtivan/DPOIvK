@@ -66,4 +66,4 @@ def _sample_df_with_constant_column() -> pd.DataFrame:
     return pd.DataFrame({
         "age": [10, 20, 30, 40],
         "constant_column": [1, 1, 1, 1],  # Константная колонка
-        "
+
