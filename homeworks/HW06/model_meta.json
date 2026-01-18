@@ -1,0 +1,1 @@
+{"model": "DecisionTreeClassifier", "parameters": {"max_depth": 10, "min_samples_leaf": 2}, "metrics": {"accuracy": 0.8679166666666667, "f1": 0.783617747440273, "roc_auc": 0.8787560782844954}}
